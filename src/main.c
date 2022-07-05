@@ -3,6 +3,7 @@
 
 #include <libudev.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,7 @@ struct args {
 
 static int info(const struct args *args);
 static int set(const struct args *args);
+static int inc(const struct args *args, bool dec);
 
 int main(int argc, char **argv) {
     struct args args;
@@ -83,9 +85,10 @@ int main(int argc, char **argv) {
         return info(&args);
     } else if (strcmp("set", argv[optind]) == 0) {
         return set(&args);
-    } else if (strcmp("inc", argv[optind]) == 0 || strcmp("inc", argv[optind]) == 0) {
-        fprintf(stderr, "Not implemented yet!\n");
-        return 1;
+    } else if (strcmp("inc", argv[optind]) == 0) {
+        return inc(&args, false);
+    } else if (strcmp("dec", argv[optind]) == 0) {
+        return inc(&args, true);
     } else {
         fprintf(stderr, "Invalid command \"%s\"\n", argv[optind]);
         return 64;
@@ -177,6 +180,81 @@ static int set(const struct args *args) {
     ulctl_error_t error = ulctl_light_write(&light);
     if (error.is_error) {
         fprintf(stderr, "Failed to write to device %s\n", light.name);
+    }
+
+    ulctl_light_print(&light, args->m);
+
+    ulctl_light_destroy(&light);
+    udev_unref(udev);
+
+    return 0;
+}
+
+static int inc(const struct args *args, bool dec) {
+    if (args->argc < 1) {
+        fprintf(stderr, "No value provided\n");
+        return 64;
+    }
+
+    char *endptr;
+    double value = strtod(args->argv[0], &endptr);
+    if (endptr != args->argv[0] + strlen(args->argv[0])) {
+        fprintf(stderr, "Invalid value: \"%s\"\n", args->argv[0]);
+        return 64;
+    }
+
+    struct udev *udev = udev_new();
+    if (!udev) {
+        fprintf(stderr, "Failed to create udev context\n");
+        return 1;
+    }
+
+    struct ulctl_light light;
+    if (args->d) {
+        ulctl_error_t error = ulctl_light_get(udev, &light, args->d);
+        if (error.is_error) {
+            fprintf(stderr, "Failed to get light \"%s\": %s\n", args->d, error.error);
+            udev_unref(udev);
+            return 1;
+        }
+    } else {
+        ulctl_error_t error = ulctl_light_get_default(udev, &light);
+        if (error.is_error) {
+            fprintf(stderr, "Failed to get light: %s\n", error.error);
+            udev_unref(udev);
+            return 1;
+        }
+    }
+
+    if (args->s) {
+        if (dec && value >= light.brightness) {
+            light.brightness = 0;
+        } else if (dec) {
+            light.brightness -= round(value);
+        } else if (value + light.brightness >= light.max_brightness) {
+            light.brightness = light.max_brightness;
+        } else {
+            light.brightness += round(value);
+        }
+    } else {
+        double perc = ((double)light.brightness / (double)light.max_brightness) * 100.0;
+        if (dec && value >= perc) {
+            light.brightness = 0;
+        } else if (dec) {
+            light.brightness -= round(((double)light.max_brightness / 100.0) * value);
+        } else if (value + perc >= 100.0) {
+            light.brightness = light.max_brightness;
+        } else {
+            light.brightness += round(((double)light.max_brightness / 100.0) * value);
+        }
+    }
+
+    ulctl_error_t error = ulctl_light_write(&light);
+    if (error.is_error) {
+        fprintf(stderr, "Failed to write to device %s\n", light.name);
+        ulctl_light_destroy(&light);
+        udev_unref(udev);
+        return 1;
     }
 
     ulctl_light_print(&light, args->m);
