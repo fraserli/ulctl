@@ -14,6 +14,7 @@ struct args {
     unsigned int m : 1;
     unsigned int s : 1;
     unsigned int v : 1;
+    unsigned int q : 1;
     const char *d;
 
     int argc;
@@ -30,7 +31,7 @@ int main(int argc, char **argv) {
     memset(&args, 0, sizeof(struct args));
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:hmsv")) != -1) {
+    while ((opt = getopt(argc, argv, "d:hmsvq")) != -1) {
         switch (opt) {
         case 'd':
             args.d = optarg;
@@ -46,6 +47,9 @@ int main(int argc, char **argv) {
             break;
         case 'v':
             args.v = 1;
+            break;
+        case 'q':
+            args.q = 1;
             break;
         case '?':
             return 64;
@@ -65,7 +69,8 @@ int main(int argc, char **argv) {
                "    -h          Show usage information and exit.\n"
                "    -m          Enable machine readable output.\n"
                "    -s          Use specific values instead of percentage.\n"
-               "    -v          Show version information and exit.\n");
+               "    -v          Show version information and exit.\n"
+               "    -q          Suppress output of set, inc, dec commands.\n");
         return 0;
     } else if (args.v) {
         printf("ulctl v%s\n", PROJECT_VERSION);
@@ -216,7 +221,9 @@ static int set(const struct args *args) {
         return 1;
     }
 
-    ulctl_light_print(&light, args->m);
+    if (!args->q) {
+        ulctl_light_print(&light, args->m);
+    }
 
     ulctl_light_destroy(&light);
     udev_unref(udev);
@@ -291,7 +298,9 @@ static int inc(const struct args *args, bool dec) {
         return 1;
     }
 
-    ulctl_light_print(&light, args->m);
+    if (!args->q) {
+        ulctl_light_print(&light, args->m);
+    }
 
     ulctl_light_destroy(&light);
     udev_unref(udev);
