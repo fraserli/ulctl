@@ -21,6 +21,7 @@ struct args {
 };
 
 static int info(const struct args *args);
+static int list(const struct args *args);
 static int set(const struct args *args);
 static int inc(const struct args *args, bool dec);
 
@@ -55,6 +56,7 @@ int main(int argc, char **argv) {
         printf("Usage: ulctl [<options>...] <command> [<command_args>...]\n\n"
                "Commands:\n"
                "    info        Show device information (default).\n"
+               "    list        List all available devices.\n"
                "    set VALUE   Set device brightness.\n"
                "    inc VALUE   Increase brightness.\n"
                "    dec VALUE   Decrease brightness.\n\n"
@@ -83,6 +85,8 @@ int main(int argc, char **argv) {
 
     if (strcmp("info", argv[optind]) == 0) {
         return info(&args);
+    } else if (strcmp("list", argv[optind]) == 0) {
+        return list(&args);
     } else if (strcmp("set", argv[optind]) == 0) {
         return set(&args);
     } else if (strcmp("inc", argv[optind]) == 0) {
@@ -122,6 +126,33 @@ static int info(const struct args *args) {
     ulctl_light_print(&light, args->m);
 
     ulctl_light_destroy(&light);
+    udev_unref(udev);
+
+    return 0;
+}
+
+static int list(const struct args *args) {
+    struct udev *udev = udev_new();
+    if (!udev) {
+        fprintf(stderr, "Failed to create udev context\n");
+        return 1;
+    }
+
+    size_t count = 0;
+    struct ulctl_light *lights;
+    ulctl_error_t error = ulctl_light_list(udev, &lights, &count);
+    if (error.is_error) {
+        fprintf(stderr, "Failed to list lights: %s\n", error.error);
+        udev_unref(udev);
+        return 1;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        ulctl_light_print(&lights[i], args->m);
+        ulctl_light_destroy(&lights[i]);
+    }
+
+    free(lights);
     udev_unref(udev);
 
     return 0;
@@ -180,6 +211,9 @@ static int set(const struct args *args) {
     ulctl_error_t error = ulctl_light_write(&light);
     if (error.is_error) {
         fprintf(stderr, "Failed to write to device %s\n", light.name);
+        ulctl_light_destroy(&light);
+        udev_unref(udev);
+        return 1;
     }
 
     ulctl_light_print(&light, args->m);

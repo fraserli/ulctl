@@ -17,6 +17,7 @@ struct ulctl_light {
 
 ulctl_error_t ulctl_light_get(struct udev *udev, struct ulctl_light *light, const char *name);
 ulctl_error_t ulctl_light_get_default(struct udev *udev, struct ulctl_light *light);
+ulctl_error_t ulctl_light_list(struct udev *udev, struct ulctl_light **lights, size_t *count);
 
 void ulctl_light_destroy(struct ulctl_light *light);
 

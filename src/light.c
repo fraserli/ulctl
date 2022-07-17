@@ -71,6 +71,62 @@ ulctl_error_t ulctl_light_get_default(struct udev *udev, struct ulctl_light *lig
     return ulctl_ok();
 }
 
+ulctl_error_t ulctl_light_list(struct udev *udev, struct ulctl_light **lights, size_t *count) {
+    struct udev_enumerate *enumerate = udev_enumerate_new(udev);
+    if (!enumerate) {
+        return ulctl_error("failed to create udev enumerate object");
+    }
+
+    if (udev_enumerate_add_match_subsystem(enumerate, "backlight") < 0) {
+        udev_enumerate_unref(enumerate);
+        return ulctl_error("failed to match backlight subsystem");
+    }
+
+    if (udev_enumerate_add_match_subsystem(enumerate, "leds") < 0) {
+        udev_enumerate_unref(enumerate);
+        return ulctl_error("failed to match leds subsystem");
+    }
+
+    if (udev_enumerate_scan_devices(enumerate) < 0) {
+        udev_enumerate_unref(enumerate);
+        return ulctl_error("failed to scan devices");
+    }
+
+    *count = 0;
+
+    struct udev_list_entry *list_entry;
+    udev_list_entry_foreach(list_entry, udev_enumerate_get_list_entry(enumerate)) { (*count)++; }
+
+    *lights = calloc(*count, sizeof(struct ulctl_light));
+
+    list_entry = udev_enumerate_get_list_entry(enumerate);
+    for (size_t i = 0; i < *count; i++) {
+        const char *path = udev_list_entry_get_name(list_entry);
+        struct udev_device *device = udev_device_new_from_syspath(udev, path);
+        if (!device) {
+            udev_enumerate_unref(enumerate);
+            return ulctl_error("unable to read device");
+        }
+
+        (*lights)[i].device = device;
+        (*lights)[i].name = udev_device_get_sysname(device);
+        (*lights)[i].subsystem = udev_device_get_subsystem(device);
+
+        ulctl_error_t error = ulctl_light_read(&(*lights)[i]);
+        if (error.is_error) {
+            udev_device_unref(device);
+            udev_enumerate_unref(enumerate);
+            return error;
+        }
+
+        list_entry = udev_list_entry_get_next(list_entry);
+    }
+
+    udev_enumerate_unref(enumerate);
+
+    return ulctl_ok();
+}
+
 void ulctl_light_destroy(struct ulctl_light *light) {
     udev_device_unref((struct udev_device *)light->device);
 }
