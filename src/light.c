@@ -166,10 +166,10 @@ void ulctl_light_print(const struct ulctl_light *light, bool machine) {
                ((double)light->brightness / (double)light->max_brightness) * 100.0,
                light->brightness, light->max_brightness, light->syspath);
     } else {
-        printf("Device \"%s\" (%s):\n"
-               "    Current brightness: %i (%.2f%%)\n"
-               "    Max brightness: %i\n"
-               "    Sysfs path: \"%s\"\n",
+        printf("\33[34;1mDevice \"%s\" (%s):\33[0m\n"
+               "    \33[32mCurrent brightness:\33[0m %i (\33[0;1m%.2f%%\33[0m)\n"
+               "    \33[32mMax brightness:\33[0m %i\n"
+               "    \33[32mSysfs path:\33[0m \33[35m\"%s\"\33[0m\n",
                light->name, light->subsystem, light->brightness,
                ((double)light->brightness / (double)light->max_brightness) * 100.0,
                light->max_brightness, light->syspath);
