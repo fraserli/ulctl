@@ -18,6 +18,7 @@ ulctl_error_t ulctl_light_get(struct udev *udev, struct ulctl_light *light, cons
     light->device = device;
     light->name = udev_device_get_sysname(device);
     light->subsystem = udev_device_get_subsystem(device);
+    light->syspath = udev_device_get_syspath(device);
 
     ulctl_error_t error = ulctl_light_read(light);
     if (error.is_error) {
@@ -59,6 +60,7 @@ ulctl_error_t ulctl_light_get_default(struct udev *udev, struct ulctl_light *lig
     light->device = device;
     light->name = udev_device_get_sysname(device);
     light->subsystem = udev_device_get_subsystem(device);
+    light->syspath = udev_device_get_syspath(device);
 
     ulctl_error_t error = ulctl_light_read(light);
     if (error.is_error) {
@@ -111,6 +113,7 @@ ulctl_error_t ulctl_light_list(struct udev *udev, struct ulctl_light **lights, s
         (*lights)[i].device = device;
         (*lights)[i].name = udev_device_get_sysname(device);
         (*lights)[i].subsystem = udev_device_get_subsystem(device);
+        (*lights)[i].syspath = udev_device_get_syspath(device);
 
         ulctl_error_t error = ulctl_light_read(&(*lights)[i]);
         if (error.is_error) {
@@ -159,15 +162,16 @@ ulctl_error_t ulctl_light_write(const struct ulctl_light *light) {
 
 void ulctl_light_print(const struct ulctl_light *light, bool machine) {
     if (machine) {
-        printf("%s,%s,%.2f%%,%i,%i\n", light->name, light->subsystem,
+        printf("%s,%s,%.2f%%,%i,%i,\"%s\"\n", light->name, light->subsystem,
                ((double)light->brightness / (double)light->max_brightness) * 100.0,
-               light->brightness, light->max_brightness);
+               light->brightness, light->max_brightness, light->syspath);
     } else {
         printf("Device \"%s\" (%s):\n"
                "    Current brightness: %i (%.2f%%)\n"
-               "    Max brightness: %i\n",
+               "    Max brightness: %i\n"
+               "    Sysfs path: \"%s\"\n",
                light->name, light->subsystem, light->brightness,
                ((double)light->brightness / (double)light->max_brightness) * 100.0,
-               light->max_brightness);
+               light->max_brightness, light->syspath);
     }
 }
