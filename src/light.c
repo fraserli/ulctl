@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 ulctl_error_t ulctl_light_get(struct udev *udev, struct ulctl_light *light, const char *name) {
     struct udev_device *device;
@@ -18,7 +19,6 @@ ulctl_error_t ulctl_light_get(struct udev *udev, struct ulctl_light *light, cons
     light->device = device;
     light->name = udev_device_get_sysname(device);
     light->subsystem = udev_device_get_subsystem(device);
-    light->syspath = udev_device_get_syspath(device);
 
     ulctl_error_t error = ulctl_light_read(light);
     if (error.is_error) {
@@ -60,7 +60,6 @@ ulctl_error_t ulctl_light_get_default(struct udev *udev, struct ulctl_light *lig
     light->device = device;
     light->name = udev_device_get_sysname(device);
     light->subsystem = udev_device_get_subsystem(device);
-    light->syspath = udev_device_get_syspath(device);
 
     ulctl_error_t error = ulctl_light_read(light);
     if (error.is_error) {
@@ -113,7 +112,6 @@ ulctl_error_t ulctl_light_list(struct udev *udev, struct ulctl_light **lights, s
         (*lights)[i].device = device;
         (*lights)[i].name = udev_device_get_sysname(device);
         (*lights)[i].subsystem = udev_device_get_subsystem(device);
-        (*lights)[i].syspath = udev_device_get_syspath(device);
 
         ulctl_error_t error = ulctl_light_read(&(*lights)[i]);
         if (error.is_error) {
@@ -162,16 +160,25 @@ ulctl_error_t ulctl_light_write(const struct ulctl_light *light) {
 
 void ulctl_light_print(const struct ulctl_light *light, bool machine) {
     if (machine) {
-        printf("%s,%s,%.2f%%,%i,%i,\"%s\"\n", light->name, light->subsystem,
+        printf("%s,%s,%.2f%%,%i,%i\n", light->name, light->subsystem,
                ((double)light->brightness / (double)light->max_brightness) * 100.0,
-               light->brightness, light->max_brightness, light->syspath);
+               light->brightness, light->max_brightness);
     } else {
-        printf("\33[34;1mDevice \"%s\" (%s):\33[0m\n"
-               "    \33[32mCurrent brightness:\33[0m %i (\33[0;1m%.2f%%\33[0m)\n"
-               "    \33[32mMax brightness:\33[0m %i\n"
-               "    \33[32mSysfs path:\33[0m \33[35m\"%s\"\33[0m\n",
-               light->name, light->subsystem, light->brightness,
-               ((double)light->brightness / (double)light->max_brightness) * 100.0,
-               light->max_brightness, light->syspath);
+        char *no_color = getenv("NO_COLOR");
+        if (!isatty(STDOUT_FILENO) || (no_color != NULL && no_color[0] != '\0')) {
+            printf("Device \"%s\" (%s):\n"
+                   "    Current brightness: %i (%.2f%%)\n"
+                   "    Max brightness: %i\n",
+                   light->name, light->subsystem, light->brightness,
+                   ((double)light->brightness / (double)light->max_brightness) * 100.0,
+                   light->max_brightness);
+        } else {
+            printf("\33[34;1mDevice \"%s\" (\33[0;35m%s\33[34;1m):\33[0m\n"
+                   "    \33[32mCurrent brightness:\33[0m %i (\33[0;1m%.2f%%\33[0m)\n"
+                   "    \33[32mMax brightness:\33[0m %i\n",
+                   light->name, light->subsystem, light->brightness,
+                   ((double)light->brightness / (double)light->max_brightness) * 100.0,
+                   light->max_brightness);
+        }
     }
 }

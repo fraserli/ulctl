@@ -154,6 +154,9 @@ static int list(const struct args *args) {
 
     for (size_t i = 0; i < count; i++) {
         ulctl_light_print(&lights[i], args->m);
+        if (i < count - 1) {
+            putchar('\n');
+        }
         ulctl_light_destroy(&lights[i]);
     }
 

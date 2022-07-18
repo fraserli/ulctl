@@ -10,7 +10,6 @@ struct ulctl_light {
     struct udev_device *device;
     const char *name;
     const char *subsystem;
-    const char *syspath;
     unsigned int max_brightness;
 
     unsigned int brightness;
