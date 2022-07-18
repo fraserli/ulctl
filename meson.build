@@ -31,3 +31,5 @@ exe = executable(
   dependencies: deps,
   install: true
 )
+
+install_data('90-ulctl.rules', install_dir: '/usr/lib/udev/rules.d')
